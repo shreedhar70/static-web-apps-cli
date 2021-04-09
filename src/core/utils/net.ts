@@ -29,18 +29,18 @@ export function isHttpUrl(input: string) {
   }
 }
 
-export async function validateDevServerConfig(context: string) {
+export async function validateDevServerConfig(context: string, { skipWaitOn }: { skipWaitOn: boolean } = { skipWaitOn: false }) {
   let { hostname, port } = parseUrl(context);
 
   try {
     const appListening = await isAcceptingTcpConnections({ port, host: hostname });
-    if (appListening === false) {
-      const spinner = ora();
+    if (skipWaitOn == false && appListening === false) {
+      const spinner = ora({ prefixText: chalk.dim.gray("[swa]") });
       try {
         spinner.start(`Waiting for ${chalk.green(context)} to be ready...`);
         await waitOn({
           resources: [address(hostname, port)],
-          delay: 1000, // initial delay in ms, default 0
+          delay: 0, // initial delay in ms, default 0
           interval: 100, // poll interval in ms, default 250ms
           simultaneous: 1, // limit to 1 connection per resource at a time
           timeout: 30000, // timeout in ms, default Infinity

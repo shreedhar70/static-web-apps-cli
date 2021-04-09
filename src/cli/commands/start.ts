@@ -11,19 +11,29 @@ import {
   parseUrl,
   readWorkflowFile,
   validateDevServerConfig,
-} from "../../core";
+} from "../../core/index";
 
 export async function start(startContext: string, options: SWACLIConfig) {
   // WARNING: code below doesn't have access to SWA CLI env vars which are defined later below
   // make sure this code (or code from utils) does't depend on SWA CLI env vars!
 
-  let useAppDevServer: string | undefined | null = undefined;
   let useApiDevServer: string | undefined | null = undefined;
   let startupCommand: string | undefined | null = undefined;
 
+  if (options.run) {
+    startupCommand = createStartupScriptCommand(options.run);
+
+    await concurrently([{ command: `${startupCommand}`, name: "run", prefixColor: "gray.dim" }], {
+      restartTries: 0,
+      prefix: "name",
+    }).then(
+      () => process.exit(),
+      () => process.exit()
+    );
+  }
+
   if (isHttpUrl(startContext)) {
-    useAppDevServer = await validateDevServerConfig(startContext);
-    options.outputLocation = useAppDevServer;
+    options.outputLocation = await validateDevServerConfig(startContext);
   } else {
     // make sure the CLI default port is available before proceeding.
     if (await isAcceptingTcpConnections({ host: options.host, port: options.port! })) {
@@ -96,10 +106,6 @@ export async function start(startContext: string, options: SWACLIConfig) {
     if (options.sslCert === undefined || options.sslKey === undefined) {
       logger.error(`SSL Key or SSL Cert are required when using HTTPS`, true);
     }
-  }
-
-  if (options.run) {
-    startupCommand = createStartupScriptCommand(options.run, options);
   }
 
   // WARNING: code from above doesn't have access to env vars which are only defined below
